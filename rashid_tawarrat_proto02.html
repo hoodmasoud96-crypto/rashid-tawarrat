@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover"><meta name="theme-color" content="#102b2b">
+<title>راشد تورّط! — Prototype 0.2</title>
+<style>
+:root{--gold:#e8b95b;--ink:#102b2b;--panel:rgba(8,24,25,.84);--white:#fff8e9}*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#9dc8d0;color:var(--white);font-family:system-ui,-apple-system,"Segoe UI",Tahoma,sans-serif;touch-action:none}#game{position:fixed;inset:0}canvas{display:block;width:100%;height:100%}.top{position:fixed;top:env(safe-area-inset-top,10px);left:12px;right:12px;display:flex;justify-content:space-between;align-items:flex-start;pointer-events:none;gap:8px}.brand,.mission,.stats,.dialog,.controls button,.joystick{background:var(--panel);border:1px solid rgba(232,185,91,.45);backdrop-filter:blur(8px);box-shadow:0 8px 24px #07181855}.brand{padding:8px 13px;border-radius:14px}.brand strong{display:block;color:var(--gold);font-size:18px}.brand small{font-size:10px;opacity:.8}.mission{max-width:min(54vw,330px);padding:10px 13px;border-radius:14px;text-align:right}.mission b{color:var(--gold);font-size:13px}.mission div{font-size:12px;line-height:1.5;margin-top:3px}.stats{position:fixed;top:76px;right:12px;padding:7px 11px;border-radius:12px;font-size:12px;pointer-events:none}.bottom{position:fixed;left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom,0px));display:flex;justify-content:space-between;align-items:end;pointer-events:none}.joystick{width:124px;height:124px;border-radius:50%;position:relative;pointer-events:auto;background:rgba(8,24,25,.35);border:2px solid #fff8e977;touch-action:none}.stick{position:absolute;width:48px;height:48px;border-radius:50%;background:#e8b95bdd;border:2px solid #fff8e9;left:36px;top:36px;box-shadow:0 3px 12px #0008}.controls{display:flex;gap:8px;align-items:end;pointer-events:auto;flex-wrap:wrap;justify-content:flex-end;max-width:60%}.controls button{color:var(--white);border-radius:13px;padding:11px 12px;font-weight:700;font-size:12px;touch-action:manipulation}.controls button.primary{background:#a35a2a;border-color:var(--gold)}.controls button.drive{background:#285d55;border-color:#9cc9b5}.controls button:disabled{opacity:.45}.carHint{position:fixed;bottom:145px;right:12px;background:#102b2bcc;padding:7px 10px;border-radius:10px;font-size:11px;display:none}.carHint.show{display:block}.progress{position:fixed;top:174px;right:12px;background:#102b2bcc;padding:7px 10px;border-radius:10px;font-size:11px;pointer-events:none}.dialog{position:fixed;left:50%;bottom:155px;transform:translateX(-50%);width:min(92vw,520px);padding:14px 16px;border-radius:18px;display:none;text-align:right}.dialog.show{display:block}.dialog b{color:var(--gold)}.dialog p{margin:7px 0 12px;line-height:1.65;font-size:14px}.dialog button{background:var(--gold);color:#182322;border:0;border-radius:10px;padding:8px 16px;font-weight:800}.hint{position:fixed;top:132px;left:12px;color:#fff;background:#102b2bcc;padding:7px 10px;border-radius:10px;font-size:11px;pointer-events:none}.toast{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#102b2bf2;border:1px solid var(--gold);padding:14px 18px;border-radius:14px;display:none;text-align:center;font-weight:700}.toast.show{display:block}@media(max-width:560px){.brand strong{font-size:15px}.mission{max-width:52vw;padding:8px}.mission div{font-size:10px}.controls{max-width:58%;gap:5px}.controls button{padding:9px;font-size:10px}.joystick{width:108px;height:108px}.stick{left:29px;top:29px}.stats{top:69px}.hint{top:122px}}
+</style>
+</head>
+<body>
+<div id="game"></div>
+<div class="top"><div class="brand"><strong>راشد تورّط! 😂</strong><small>نسخة تجريبية 0.2 — عُمان</small></div><div class="mission"><b id="missionTitle">المهمة 001: الرسالة الغامضة</b><div id="missionText">ابحث عن مازن قرب السوق القديم.</div></div></div>
+<div class="stats">⭐ النقاط: <span id="score">0</span>　💰 الرصيد: <span id="cash">0</span> ر.ع</div>
+<div class="hint" id="hint">حرّك الدائرة للمشي · اقترب من مازن واضغط تفاعل</div><div class="progress" id="progress">التقدم: 0 / 3</div><div class="carHint" id="carHint">أنت تقود السيارة · للأمام ادفع الدائرة للأعلى</div>
+<div class="bottom"><div class="joystick" id="joy"><div class="stick" id="stick"></div></div><div class="controls"><button id="interact" class="primary">تفاعل</button><button id="drive" class="drive">قيادة السيارة</button><button id="hat">غطاء الرأس: كُمّة</button><button id="clothes">لون الدشداشة</button><button id="camera">تبديل الكاميرا</button></div></div>
+<div class="dialog" id="dialog"><b id="speaker">مازن</b><p id="line"></p><button id="next">متابعة</button></div>
+<div class="toast" id="toast"></div>
+<script type="module">
+import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js';
+const root=document.getElementById('game');
+const scene=new THREE.Scene();scene.background=new THREE.Color(0x9bc9d1);scene.fog=new THREE.Fog(0x9bc9d1,42,145);
+const camera=new THREE.PerspectiveCamera(62,innerWidth/innerHeight,.1,300);
+const renderer=new THREE.WebGLRenderer({antialias:true});renderer.setPixelRatio(Math.min(devicePixelRatio,1.7));renderer.setSize(innerWidth,innerHeight);renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;root.appendChild(renderer.domElement);
+scene.add(new THREE.HemisphereLight(0xe8f7ff,0x87613f,2));const sun=new THREE.DirectionalLight(0xffedc5,2.2);sun.position.set(-25,40,20);sun.castShadow=true;sun.shadow.mapSize.set(1024,1024);scene.add(sun);
+const mat=(color,roughness=.9)=>new THREE.MeshStandardMaterial({color,roughness});
+const sand=mat(0xd6bd91),road=mat(0x56534d),white=mat(0xf0e9d8),dark=mat(0x253334),stone=mat(0xb69b78),blue=mat(0x477b83),green=mat(0x3f6946),gold=mat(0xd9a94f);
+function box(parent,w,h,d,m,x,y,z){const o=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),m);o.position.set(x,y,z);o.castShadow=true;o.receiveShadow=true;parent.add(o);return o}
+function cyl(parent,r1,r2,h,m,x,y,z,seg=12){const o=new THREE.Mesh(new THREE.CylinderGeometry(r1,r2,h,seg),m);o.position.set(x,y,z);o.castShadow=true;parent.add(o);return o}
+const ground=new THREE.Mesh(new THREE.PlaneGeometry(240,240),sand);ground.rotation.x=-Math.PI/2;ground.position.y=-.08;ground.receiveShadow=true;scene.add(ground);
+// Curving-feel main street and market square
+box(scene,15,.08,115,road,0,0,-12);box(scene,46,.08,24,road,0,.01,-34);
+for(let z=-62;z<42;z+=9){box(scene,.16,.03,3,mat(0xe6d7ae),0,.07,z)}
+// Omani-inspired low-rise town buildings
+for(let i=0;i<24;i++){let side=i%2===0?-1:1;let z=12-Math.floor(i/2)*8.5;let x=side*(13+((i*7)%5));let w=5+(i%3);let h=4+(i%4)*.7;let d=5+(i%2)*2;let wall=[0xd9c8a8,0xcbb894,0xe4d8bd,0xbca985][i%4];box(scene,w,h,d,mat(wall),x,h/2,z);box(scene,w+.25,.22,d+.25,mat(0x8c775a),x,h+.1,z);box(scene,.9,1.8,.12,mat(0x684a35),x,h/2-.9,z+d/2+.07);for(let wx of [-1.35,1.35])box(scene,.8,.9,.1,mat(0x5c7777),x+wx,h*.65,z+d/2+.08);}
+
+// Extra street details: shaded market awnings, lamps, shop signs and a small harbor edge.
+for(let i=0;i<8;i++){
+  const side=i%2===0?-1:1, z=7-Math.floor(i/2)*15;
+  const awning=box(scene,4.8,.16,2.1,mat(i%3===0?0x9b4937:(i%3===1?0xe2d1ae:0x456b68)),side*15,.14,z);
+  awning.rotation.z=side*.035;
+  for(let k=-1;k<=1;k+=2)cyl(scene,.07,.07,2.7,mat(0x6b5238),side*15+k*2.1,1.35,z,8);
+  box(scene,2.2,.55,.12,mat(0x76513a),side*15,2.6,z+2.65);
+  box(scene,1.65,.08,.08,mat(0xe8b95b),side*15,2.65,z+2.73);
+}
+for(let i=0;i<7;i++){
+  const z=20-i*13, x=(i%2?1:-1)*8.5;
+  cyl(scene,.09,.12,3.6,mat(0x3e4541),x,1.8,z,8);
+  box(scene,.65,.12,.28,mat(0xe8c978),x,3.55,z);
+}
+const sea= new THREE.Mesh(new THREE.PlaneGeometry(70,38),mat(0x4e8e9a,.45));
+sea.rotation.x=-Math.PI/2;sea.position.set(0,-.02,-78);scene.add(sea);
+for(let i=0;i<5;i++){const b=box(scene,2.2,.7,5,mat(0x765b43),-20+i*10,.35,-54);b.rotation.y=(i-2)*.08;}
+
+// Distant rocky hills
+for(let i=0;i<15;i++){let x=(i-7)*17;let h=10+(i*13%18);let m=mat(i%2?0x9a856d:0x806f60);let hill=new THREE.Mesh(new THREE.ConeGeometry(12,h,5),m);hill.position.set(x,h/2-1,-90-(i%3)*12);hill.rotation.y=i*.7;scene.add(hill)}
+// palms
+for(let i=0;i<14;i++){let x=(i%2?1:-1)*(10+Math.floor(i/2)*4.5),z=22-Math.floor(i/2)*13;cyl(scene,.25,.38,4,mat(0x795538),x,2,z);for(let j=0;j<6;j++){let leaf=new THREE.Mesh(new THREE.ConeGeometry(.32,3,5),mat(0x326344));leaf.position.set(x+Math.cos(j*Math.PI/3)*1.15,4.05,z+Math.sin(j*Math.PI/3)*1.15);leaf.rotation.z=Math.PI/2-Math.cos(j*Math.PI/3)*.5;leaf.rotation.x=Math.sin(j*Math.PI/3)*.5;scene.add(leaf)}}
+// Player character assembled as a temporary prototype model; assets can be replaced later.
+function makePerson(shirtColor,withTurban=false){const g=new THREE.Group();const robe=mat(shirtColor);cyl(g,.42,.5,1.65,robe,0,.95,0,16);const head=new THREE.Mesh(new THREE.SphereGeometry(.31,16,12),mat(0x9b694d));head.position.y=2.02;g.add(head);const cap=cyl(g,.32,.3,.16,mat(0x3c4b42),0,2.31,0,16);const turban=cyl(g,.36,.34,.25,mat(0xf1e8d5),0,2.34,0,16);turban.visible=withTurban;cap.visible=!withTurban;const face=box(g,.23,.09,.08,mat(0x33251e),0,2.03,.27);face.castShadow=false;return {group:g,robe,cap,turban}}
+const player=makePerson(0xf0e9d8);player.group.position.set(-5,0,8);scene.add(player.group);
+// Mazen NPC
+const mazen=makePerson(0x9caa9d);mazen.group.position.set(4,0,-20);scene.add(mazen.group);
+// parked car
+const car=new THREE.Group();box(car,3.4,.8,5,mat(0x8d3d2e),0,.8,0);box(car,2.6,.8,2.3,mat(0x9ec0c3),0,1.55,-.15);for(const x of [-1.65,1.65])for(const z of [-1.6,1.6]){let w=cyl(car,.48,.48,.28,mat(0x202323),x,.48,z,16);w.rotation.z=Math.PI/2}car.position.set(-7,0,-9);scene.add(car);const carState={driving:false,speed:0,heading:0};
+let hatTurban=false,robeIndex=0,camMode=0,score=0,cash=0,stage=0,dialogIndex=0;const robeColors=[0xf0e9d8,0xb9c9d0,0x9aaf9e,0xd8c4a4,0x3d4549];
+const lines=[['مازن','يا راشد! أخيراً وصلت. حسبتك ضيّعت الطريق… أو الطريق ضيّعك.'],['راشد','وين الرسالة؟ لا تقول أرسلتها مع ساعي البريد على ظهر سلحفاة.'],['مازن','لا، حطّيتها في الصندوق. بس عندي مشكلة بسيطة… نسيت وين الصندوق!'],['راشد','ممتاز. بدأنا المهمة بفقدان الدليل قبل لا نلقاه. عبقري يا مازن!']];const foundLines=[['راشد','لقيت الصندوق! شكله أقدم من شبكة الإنترنت نفسها.'],['مازن','افتحه بهدوء، يمكن فيه رسالة… ويمكن فاتورة كهرباء من 1998.'],['راشد','هذه الرسالة! مكتوب فيها: سلّمها لمازن. يعني كل هذا المشوار عشان أعطيك إياها؟'],['مازن','إيه، كنت أختبر لياقتك. واضح تحتاج صيانة.']];let foundIndex=0;
+const dialog=document.getElementById('dialog');function showLine(){if(dialogIndex<lines.length){document.getElementById('speaker').textContent=lines[dialogIndex][0];document.getElementById('line').textContent=lines[dialogIndex][1];dialog.classList.add('show')}else{dialog.classList.remove('show');stage=1;document.getElementById('missionTitle').textContent='المهمة 001: ابحث عن الصندوق';document.getElementById('missionText').textContent='اتجه إلى الصندوق قرب السيارة القديمة.';toast('تم تحديث المهمة! لا تضيّع الصندوق مثل مازن 😂')}}
+document.getElementById('next').onclick=()=>{dialogIndex++;showLine()};
+const toastEl=document.getElementById('toast');let toastTimer;function toast(t){toastEl.textContent=t;toastEl.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>toastEl.classList.remove('show'),2200)}
+// Search box objective marker
+const chest=new THREE.Group();box(chest,1.15,.75,.8,mat(0x80512d),0,.4,0);box(chest,1.2,.13,.86,gold,0,.82,0);for(let x of [-.3,.3])box(chest,.1,.12,.08,mat(0x382b20),x,.43,.42);chest.position.set(-9,0,-15);scene.add(chest);const ring=new THREE.Mesh(new THREE.TorusGeometry(1.1,.09,8,28),gold);ring.rotation.x=Math.PI/2;ring.position.set(-9,.15,-15);scene.add(ring);
+// Controls
+let moveX=0,moveY=0,joyActive=false,joyId=null;const joy=document.getElementById('joy'),stick=document.getElementById('stick');function joyMove(e){const r=joy.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2;let dx=e.clientX-cx,dy=e.clientY-cy,len=Math.hypot(dx,dy),max=38;if(len>max){dx=dx/len*max;dy=dy/len*max}moveX=dx/max;moveY=dy/max;stick.style.transform=`translate(${dx}px,${dy}px)`}joy.addEventListener('pointerdown',e=>{joyActive=true;joyId=e.pointerId;joy.setPointerCapture(joyId);joyMove(e)});joy.addEventListener('pointermove',e=>{if(joyActive&&e.pointerId===joyId)joyMove(e)});function joyEnd(){joyActive=false;moveX=moveY=0;stick.style.transform='translate(0,0)'}joy.addEventListener('pointerup',joyEnd);joy.addEventListener('pointercancel',joyEnd);
+
+const driveBtn=document.getElementById('drive'),carHint=document.getElementById('carHint'),hint=document.getElementById('hint');
+driveBtn.onclick=()=>{
+ const p=player.group.position;
+ if(!carState.driving){
+   if(p.distanceTo(car.position)>5){toast('السيارة هناك! قرّب لها أولاً.');return}
+   carState.driving=true;carState.speed=0;player.group.visible=false;driveBtn.textContent='النزول من السيارة';
+   carHint.classList.add('show');hint.textContent='وأنت تقود: حرّك الدائرة للأعلى للتقدم ولليمين واليسار للتوجيه';
+   toast('اربط الحزام يا راشد… إذا موجود أصلاً 😂');
+ }else{
+   carState.driving=false;carState.speed=0;player.group.visible=true;
+   player.group.position.set(car.position.x+2,0,car.position.z+1.5);
+   driveBtn.textContent='قيادة السيارة';carHint.classList.remove('show');
+   hint.textContent='حرّك الدائرة للمشي · اقترب من مازن واضغط تفاعل';toast('نزلت بالسلامة… السيارة تحتاج جلسة علاج بعد قيادتك.');
+ }
+};
+
+const keys={};addEventListener('keydown',e=>{keys[e.key.toLowerCase()]=true});addEventListener('keyup',e=>{keys[e.key.toLowerCase()]=false});
+document.getElementById('hat').onclick=()=>{hatTurban=!hatTurban;player.cap.visible=!hatTurban;player.turban.visible=hatTurban;document.getElementById('hat').textContent='غطاء الرأس: '+(hatTurban?'مصر':'كُمّة')};
+document.getElementById('clothes').onclick=()=>{robeIndex=(robeIndex+1)%robeColors.length;player.robe.color.setHex(robeColors[robeIndex]);toast('تم تغيير لون الدشداشة')};
+document.getElementById('camera').onclick=()=>{camMode=(camMode+1)%2;toast(camMode?'منظور أقرب':'منظور خلفي')};
+document.getElementById('interact').onclick=()=>{
+ let p=player.group.position;
+ if(carState.driving){toast('انزل من السيارة أولاً… مازن ما يستلم الرسائل من الشباك 😂');return}
+ if(stage===0&&p.distanceTo(mazen.group.position)<5){dialogIndex=0;showLine()}
+ else if(stage===1&&p.distanceTo(chest.position)<4){
+   stage=2;foundIndex=0;document.getElementById('missionTitle').textContent='المهمة 001: سلّم الرسالة لمازن';
+   document.getElementById('missionText').textContent='ارجع إلى مازن عند السوق وسلّمه الرسالة.';
+   document.getElementById('progress').textContent='التقدم: 2 / 3';showFoundLine();
+ }else if(stage===2&&p.distanceTo(mazen.group.position)<5){
+   stage=3;score+=250;cash+=15;document.getElementById('score').textContent=score;document.getElementById('cash').textContent=cash;
+   document.getElementById('missionTitle').textContent='أحسنت! اكتملت المهمة 001';
+   document.getElementById('missionText').textContent='سلّمت الرسالة. المهمة التالية ستُفتح في تحديث لاحق.';
+   document.getElementById('progress').textContent='التقدم: 3 / 3';toast('المهمة اكتملت! +250 نقطة و15 ريالاً افتراضياً 🎉');
+ }else if(stage===0){toast('مازن ينتظرك عند السوق… لا تروح تسلّم على الجدار.')}
+ else if(stage===1){toast('اقترب أكثر من الصندوق ثم اضغط تفاعل.')}
+ else if(stage===2){toast('مازن ينتظرك! لا تخلي الرسالة تتقاعد في جيبك 😂')}
+ else toast('أنت بطل! أنجزت المهمة الأولى بنجاح.'); 
+};
+function showFoundLine(){if(foundIndex<foundLines.length){document.getElementById('speaker').textContent=foundLines[foundIndex][0];document.getElementById('line').textContent=foundLines[foundIndex][1];dialog.classList.add('show')}else dialog.classList.remove('show')}
+document.getElementById('next').addEventListener('click',()=>{if(stage===2&&foundIndex<foundLines.length){foundIndex++;showFoundLine()}});
+
+let last=performance.now();function animate(now){requestAnimationFrame(animate);let dt=Math.min((now-last)/1000,.04);last=now;let x=moveX+(keys['d']||keys['arrowright']?1:0)-(keys['a']||keys['arrowleft']?1:0),z=moveY+(keys['s']||keys['arrowdown']?1:0)-(keys['w']||keys['arrowup']?1:0);let v=new THREE.Vector3(x,0,z);if(v.length()>1)v.normalize();
+if(carState.driving){
+  const steer=THREE.MathUtils.clamp(x,-1,1),throttle=THREE.MathUtils.clamp(-z,-1,1);
+  carState.speed=THREE.MathUtils.damp(carState.speed,throttle>=0?throttle*13:throttle*7,3.2,dt);
+  carState.heading-=steer*carState.speed*.075*dt;
+  car.position.x+=Math.sin(carState.heading)*carState.speed*dt;
+  car.position.z-=Math.cos(carState.heading)*carState.speed*dt;
+  car.position.x=THREE.MathUtils.clamp(car.position.x,-36,36);car.position.z=THREE.MathUtils.clamp(car.position.z,-58,36);
+  car.rotation.y=carState.heading;
+}else{
+  if(v.lengthSq()>.01){player.group.position.x+=v.x*7*dt;player.group.position.z+=v.z*7*dt;player.group.rotation.y=Math.atan2(v.x,v.z)}
+  player.group.position.x=THREE.MathUtils.clamp(player.group.position.x,-34,34);player.group.position.z=THREE.MathUtils.clamp(player.group.position.z,-58,34);
+}
+let target=carState.driving?car.position:player.group.position;let offset=camMode?new THREE.Vector3(0,3.1,5.2):new THREE.Vector3(0,5.5,9.5);let rotated=offset.clone().applyAxisAngle(new THREE.Vector3(0,1,0),carState.driving?carState.heading:0);let desired=target.clone().add(rotated);camera.position.lerp(desired,.09);camera.lookAt(target.x,target.y+1.25,target.z-1.5);ring.rotation.z+=dt*.8;mazen.group.rotation.y=Math.sin(now*.0007)*.2;renderer.render(scene,camera)}requestAnimationFrame(animate);
+addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)});
+// Initial camera placement
+camera.position.set(-5,6,18);camera.lookAt(0,1,-3);document.getElementById('progress').textContent='التقدم: 0 / 3';
+</script>
+</body></html>
